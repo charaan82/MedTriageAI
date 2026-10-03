@@ -1,4 +1,19 @@
+# Python virtual environment
 .venv/
+
+# Python cache
 __pycache__/
-.env
 *.pyc
+
+# Environment variables / secrets
+.env
+.env.*
+
+# Large MITRE dataset
+data/mitre/
+
+# Large UNSW-NB15 datasets
+data/unsw/
+
+# Large trained machine-learning models
+models/*.pkl
