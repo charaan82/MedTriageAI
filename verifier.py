@@ -1,6 +1,10 @@
 import re
 
 
+# Matches:
+# T1049
+# T1016.001
+# T1590.004
 TECHNIQUE_PATTERN = r"\bT\d{4}(?:\.\d{3})?\b"
 
 
@@ -8,6 +12,7 @@ def extract_technique_ids(text):
     """
     Extract MITRE ATT&CK technique IDs from text.
     """
+
     if not text:
         return []
 
@@ -95,3 +100,10 @@ if __name__ == "__main__":
         f"\nFabricated-ID Rate: "
         f"{result['fabricated_id_rate'] * 100:.2f}%"
     )
+
+    print("\nTarget: <= 5.00%")
+
+    if result["fabricated_id_rate"] <= 0.05:
+        print("STATUS: PASS")
+    else:
+        print("STATUS: FAIL")

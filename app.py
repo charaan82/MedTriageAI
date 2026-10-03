@@ -35,11 +35,13 @@ FEATURES = [
     "rate"
 ]
 
+
 CATEGORICAL_FEATURES = [
     "proto",
     "service",
     "state"
 ]
+
 
 NUMERIC_FEATURES = [
     "dur",
@@ -58,8 +60,13 @@ NUMERIC_FEATURES = [
 @st.cache_resource
 def load_model():
 
-    model = joblib.load(MODEL_FILE)
-    feature_columns = joblib.load(FEATURE_FILE)
+    model = joblib.load(
+        MODEL_FILE
+    )
+
+    feature_columns = joblib.load(
+        FEATURE_FILE
+    )
 
     return model, feature_columns
 
@@ -73,12 +80,17 @@ model, feature_columns = load_model()
 
 def initialize_database():
 
-    os.makedirs("database", exist_ok=True)
+    os.makedirs(
+        "database",
+        exist_ok=True
+    )
 
-    connection = sqlite3.connect(DB_FILE)
+    connection = sqlite3.connect(
+        DB_FILE
+    )
+
     cursor = connection.cursor()
 
-    # Create the table if it does not already exist
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS alert_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,20 +102,14 @@ def initialize_database():
         )
     """)
 
-    # --------------------------------------------------------
-    # Check existing database columns
-    # --------------------------------------------------------
-
-    cursor.execute("PRAGMA table_info(alert_history)")
+    cursor.execute(
+        "PRAGMA table_info(alert_history)"
+    )
 
     columns = [
         row[1]
         for row in cursor.fetchall()
     ]
-
-    # --------------------------------------------------------
-    # Upgrade older database
-    # --------------------------------------------------------
 
     if "fabricated_rate" not in columns:
 
@@ -137,7 +143,9 @@ def save_history(
     alert_text
 ):
 
-    connection = sqlite3.connect(DB_FILE)
+    connection = sqlite3.connect(
+        DB_FILE
+    )
 
     cursor = connection.cursor()
 
@@ -152,7 +160,9 @@ def save_history(
         )
         VALUES (?, ?, ?, ?, ?)
     """, (
-        datetime.now().isoformat(timespec="seconds"),
+        datetime.now().isoformat(
+            timespec="seconds"
+        ),
         severity,
         ", ".join(mitre_ids),
         fabricated_rate,
@@ -172,14 +182,12 @@ def sanitize_text(text):
     if not isinstance(text, str):
         return ""
 
-    # Remove control characters
     text = re.sub(
         r"[\x00-\x08\x0B\x0C\x0E-\x1F]",
         " ",
         text
     )
 
-    # Limit text length
     text = text[:2000]
 
     return text.strip()
@@ -191,19 +199,18 @@ def sanitize_text(text):
 
 def prepare_features(row):
 
-    data = pd.DataFrame([row])
+    data = pd.DataFrame(
+        [row]
+    )
 
-    # Keep exactly the features used by the classifier
     data = data[FEATURES]
 
-    # One-hot encode categorical features
     data = pd.get_dummies(
         data,
         columns=CATEGORICAL_FEATURES,
         drop_first=False
     )
 
-    # Convert numerical fields
     for column in NUMERIC_FEATURES:
 
         data[column] = pd.to_numeric(
@@ -211,16 +218,13 @@ def prepare_features(row):
             errors="coerce"
         )
 
-    # Remove infinity values
     data = data.replace(
         [float("inf"), float("-inf")],
         0
     )
 
-    # Replace missing values
     data = data.fillna(0)
 
-    # Match exactly the columns used during training
     data = data.reindex(
         columns=feature_columns,
         fill_value=0
@@ -235,11 +239,103 @@ def prepare_features(row):
 
 def predict_severity(row):
 
-    X = prepare_features(row)
+    X = prepare_features(
+        row
+    )
 
-    prediction = model.predict(X)[0]
+    prediction = model.predict(
+        X
+    )[0]
 
-    return str(prediction).capitalize()
+    return str(
+        prediction
+    ).capitalize()
+
+
+# ============================================================
+# GET MODEL CATEGORIES
+# ============================================================
+
+def get_model_categories():
+
+    proto_options = sorted(
+        [
+            column.replace(
+                "proto_",
+                "",
+                1
+            )
+            for column in feature_columns
+            if column.startswith(
+                "proto_"
+            )
+        ]
+    )
+
+    service_options = sorted(
+        [
+            column.replace(
+                "service_",
+                "",
+                1
+            )
+            for column in feature_columns
+            if column.startswith(
+                "service_"
+            )
+        ]
+    )
+
+    state_options = sorted(
+        [
+            column.replace(
+                "state_",
+                "",
+                1
+            )
+            for column in feature_columns
+            if column.startswith(
+                "state_"
+            )
+        ]
+    )
+
+    # Safe fallbacks
+
+    if not proto_options:
+
+        proto_options = [
+            "tcp",
+            "udp",
+            "icmp"
+        ]
+
+    if not service_options:
+
+        service_options = [
+            "http",
+            "https",
+            "ftp",
+            "ssh",
+            "dns",
+            "smtp"
+        ]
+
+    if not state_options:
+
+        state_options = [
+            "FIN",
+            "CON",
+            "INT",
+            "REQ",
+            "RST"
+        ]
+
+    return (
+        proto_options,
+        service_options,
+        state_options
+    )
 
 
 # ============================================================
@@ -257,7 +353,9 @@ st.set_page_config(
 # HEADER
 # ============================================================
 
-st.title("🛡️ TriageMind")
+st.title(
+    "🛡️ TriageMind"
+)
 
 st.subheader(
     "RAG-Powered Security Operations Center Alert Triage Copilot"
@@ -274,7 +372,9 @@ st.divider()
 # SIDEBAR
 # ============================================================
 
-st.sidebar.title("TriageMind")
+st.sidebar.title(
+    "TriageMind"
+)
 
 st.sidebar.info(
     """
@@ -303,36 +403,64 @@ st.sidebar.success(
 # NETWORK ALERT INPUT
 # ============================================================
 
-st.header("Network Alert Input")
+st.header(
+    "Network Alert Input"
+)
 
 col1, col2, col3 = st.columns(3)
 
 
-# ------------------------------------------------------------
-# Column 1
-# ------------------------------------------------------------
+# ============================================================
+# GET DROPDOWN VALUES
+# ============================================================
+
+(
+    proto_options,
+    service_options,
+    state_options
+) = get_model_categories()
+
+
+# ============================================================
+# COLUMN 1
+# ============================================================
 
 with col1:
 
-    proto = st.text_input(
+    proto = st.selectbox(
         "Protocol",
-        value="tcp"
+        proto_options,
+        index=(
+            proto_options.index("tcp")
+            if "tcp" in proto_options
+            else 0
+        )
     )
 
-    service = st.text_input(
+    service = st.selectbox(
         "Service",
-        value="http"
+        service_options,
+        index=(
+            service_options.index("http")
+            if "http" in service_options
+            else 0
+        )
     )
 
-    state = st.text_input(
+    state = st.selectbox(
         "Connection State",
-        value="FIN"
+        state_options,
+        index=(
+            state_options.index("FIN")
+            if "FIN" in state_options
+            else 0
+        )
     )
 
 
-# ------------------------------------------------------------
-# Column 2
-# ------------------------------------------------------------
+# ============================================================
+# COLUMN 2
+# ============================================================
 
 with col2:
 
@@ -355,9 +483,9 @@ with col2:
     )
 
 
-# ------------------------------------------------------------
-# Column 3
-# ------------------------------------------------------------
+# ============================================================
+# COLUMN 3
+# ============================================================
 
 with col3:
 
@@ -378,6 +506,25 @@ with col3:
         min_value=0.0,
         value=250.0
     )
+
+
+# ============================================================
+# ANALYST NOTES
+# ============================================================
+
+st.subheader(
+    "Analyst Notes"
+)
+
+analyst_notes = st.text_area(
+    "Describe the alert or add analyst observations",
+    placeholder=(
+        "Example: Multiple failed connections from the same "
+        "source were observed within a short period."
+    ),
+    height=120,
+    max_chars=2000
+)
 
 
 st.divider()
@@ -401,7 +548,16 @@ run_button = st.button(
 if run_button:
 
     # --------------------------------------------------------
-    # CREATE INPUT ROW
+    # SANITIZE ANALYST NOTES
+    # --------------------------------------------------------
+
+    analyst_notes = sanitize_text(
+        analyst_notes
+    )
+
+
+    # --------------------------------------------------------
+    # CREATE MODEL INPUT ROW
     # --------------------------------------------------------
 
     row = {
@@ -425,7 +581,9 @@ if run_button:
         "Classifying alert severity..."
     ):
 
-        severity = predict_severity(row)
+        severity = predict_severity(
+            row
+        )
 
 
     # --------------------------------------------------------
@@ -436,7 +594,22 @@ if run_button:
         "Generating semantic representation..."
     ):
 
-        semantic_text = parse_alert(row)
+        semantic_text = parse_alert(
+            row
+        )
+
+
+    # --------------------------------------------------------
+    # ADD ANALYST NOTES TO CONTEXT
+    # --------------------------------------------------------
+
+    if analyst_notes:
+
+        semantic_text = (
+            f"{semantic_text}\n\n"
+            f"Analyst Notes:\n"
+            f"{analyst_notes}"
+        )
 
 
     # --------------------------------------------------------
@@ -479,9 +652,14 @@ if run_button:
         "Generating SOC analysis with Ollama..."
     ):
 
+        # IMPORTANT:
+        # Pass Random Forest predicted severity
+        # to Ollama.
+
         llm_response = generate_analysis(
             semantic_text,
-            retrieved_context
+            retrieved_context,
+            severity=severity
         )
 
 
@@ -516,11 +694,13 @@ if run_button:
     )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # RESULT METRICS
-    # --------------------------------------------------------
+    # ========================================================
 
-    st.header("Triage Result")
+    st.header(
+        "Triage Result"
+    )
 
     result_col1, result_col2 = st.columns(2)
 
@@ -535,15 +715,20 @@ if run_button:
 
     with result_col2:
 
+        fabricated_rate = (
+            verification["fabricated_id_rate"]
+            * 100
+        )
+
         st.metric(
             "Fabricated-ID Rate",
-            f"{verification['fabricated_id_rate'] * 100:.2f}%"
+            f"{fabricated_rate:.2f}%"
         )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # MITRE ATT&CK MAPPING
-    # --------------------------------------------------------
+    # ========================================================
 
     st.header(
         "MITRE ATT&CK Mapping"
@@ -569,9 +754,9 @@ if run_button:
         )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # AI ANALYSIS
-    # --------------------------------------------------------
+    # ========================================================
 
     st.header(
         "SOC Analyst Analysis"
@@ -582,15 +767,17 @@ if run_button:
     )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # CITATION VERIFICATION
-    # --------------------------------------------------------
+    # ========================================================
 
     st.header(
         "Citation Verification"
     )
 
-    verification_col1, verification_col2 = st.columns(2)
+    verification_col1, verification_col2 = (
+        st.columns(2)
+    )
 
 
     with verification_col1:
@@ -631,9 +818,34 @@ if run_button:
             )
 
 
-    # --------------------------------------------------------
+    # ========================================================
+    # VERIFICATION STATUS
+    # ========================================================
+
+    st.header(
+        "Verification Status"
+    )
+
+    if fabricated_rate <= 5:
+
+        st.success(
+            f"Fabricated-ID rate is "
+            f"{fabricated_rate:.2f}% "
+            "— within the ≤5% target."
+        )
+
+    else:
+
+        st.error(
+            f"Fabricated-ID rate is "
+            f"{fabricated_rate:.2f}% "
+            "— above the ≤5% target."
+        )
+
+
+    # ========================================================
     # SEMANTIC REPRESENTATION
-    # --------------------------------------------------------
+    # ========================================================
 
     with st.expander(
         "View Semantic Representation"
@@ -690,13 +902,14 @@ if os.path.exists(DB_FILE):
         ).round(2)
 
 
-        # Rename columns for dashboard
+        # Rename columns
         history = history.rename(
             columns={
                 "timestamp": "Timestamp",
                 "severity": "Severity",
                 "mitre_ids": "MITRE Techniques",
-                "fabricated_rate": "Fabricated-ID Rate (%)"
+                "fabricated_rate":
+                    "Fabricated-ID Rate (%)"
             }
         )
 
