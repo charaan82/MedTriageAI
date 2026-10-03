@@ -6,3 +6,5 @@ sentence-transformers
 faiss-cpu
 streamlit
 requests
+torch
+torchvision
