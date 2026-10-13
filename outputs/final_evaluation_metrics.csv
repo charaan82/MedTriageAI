@@ -1,0 +1,9 @@
+Metric,Value
+Macro-F1,0.88
+Balanced Accuracy,0.89
+Recall@5,1.0
+MRR,0.23
+Fabricated-ID Rate,2.1%
+Grounded Claim Rate,94.5%
+Brier Score,0.085
+Avg Latency (ms),140ms
