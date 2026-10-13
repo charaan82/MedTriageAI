@@ -1,16 +1,19 @@
 # train_classifier.py
 import os
+import pickle
 import pandas as pd
 import numpy as np
-import joblib
 from sklearn.ensemble import RandomForestClassifier
 
 def train_model():
     print("Starting lightweight classifier training routine...")
-    os.makedirs("models", exist_ok=True)
-    os.makedirs("data/unsw", exist_ok=True)
     
-    train_file = "data/unsw/UNSW_NB15_training-set.csv"
+    # Use 'saved_assets' to avoid Windows reserved word/stream block conflicts
+    assets_dir = "saved_assets"
+    os.makedirs(assets_dir, exist_ok=True)
+    os.makedirs(os.path.join("data", "unsw"), exist_ok=True)
+    
+    train_file = os.path.join("data", "unsw", "UNSW_NB15_training-set.csv")
     
     if not os.path.exists(train_file):
         np.random.seed(42)
@@ -49,13 +52,18 @@ def train_model():
     X_encoded = pd.get_dummies(X)
     feature_columns = list(X_encoded.columns)
     
-    # Lightweight hyperparameters to keep file size well under 10MB
-    clf = RandomForestClassifier(n_estimators=20, max_depth=10, random_state=42, n_jobs=-1)
+    # Train Random Forest Classifier
+    clf = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
     clf.fit(X_encoded, y)
     
-    joblib.dump(clf, "models/triagemind_attack_classifier.pkl")
-    joblib.dump(feature_columns, "models/feature_columns.pkl")
-    print("Lightweight model training complete!")
+    # Save assets to 'saved_assets' directory
+    with open(os.path.join(assets_dir, "triagemind_attack_classifier.pkl"), "wb") as f:
+        pickle.dump(clf, f)
+        
+    with open(os.path.join(assets_dir, "feature_columns.pkl"), "wb") as f:
+        pickle.dump(feature_columns, f)
+        
+    print("Model training complete and saved successfully in 'saved_assets'!")
 
 if __name__ == "__main__":
     train_model()
